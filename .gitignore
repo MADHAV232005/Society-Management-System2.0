@@ -1,5 +1,8 @@
-﻿venv/
+venv/
 venv - Copy/
 __pycache__/
 *.pyc
 .env
+staticfiles/
+node_modules/
+dist/
