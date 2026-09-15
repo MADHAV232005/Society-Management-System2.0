@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { FileText, Plus, Download, Folder, Calendar, User } from 'lucide-react';
-import { Document } from '../../types';
+import { Document, UserRole } from '../../types';
 
 interface DocumentsViewProps {
   documents: Document[];
   onAddDocument: (data: Omit<Document, 'id' | 'created_at'>) => void;
+  userRole?: UserRole;
 }
 
 export const DocumentsView: React.FC<DocumentsViewProps> = ({
   documents,
   onAddDocument,
+  userRole = 'SUPER_ADMIN',
 }) => {
+  const canUpload = userRole === 'SUPER_ADMIN' || userRole === 'COMMITTEE';
   const [showAddModal, setShowAddModal] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Document['category']>('BYLAWS');
@@ -61,14 +64,16 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
             Official society bylaws, statutory audit statements, and general meeting minutes
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-xs font-medium text-white hover:bg-sky-700 shadow-2xs"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Upload Document</span>
-        </button>
+        {canUpload && (
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-xs font-medium text-white hover:bg-sky-700 shadow-2xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Upload Document</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -206,30 +206,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <RotateCcw className="w-4 h-4" />
             </button>
-
-            {/* Current User Pill */}
-            <button
-              type="button"
-              onClick={onOpenLogin}
-              className="flex items-center space-x-2 pl-2 border-l border-slate-200 hover:bg-slate-50 p-1.5 rounded-lg transition-colors text-left"
-              title="Click to authenticate or switch user"
-            >
-              <div className="w-8 h-8 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-medium text-xs">
-                {currentUser.first_name ? currentUser.first_name[0] : 'U'}
-              </div>
-              <div className="hidden lg:block text-left">
-                <p className="text-xs font-medium text-slate-900 leading-tight">
-                  {currentUser.first_name} {currentUser.last_name}
-                </p>
-                <span
-                  className={`inline-block text-[10px] font-medium px-1.5 py-0.2 rounded border ${getRoleBadge(
-                    currentUser.role
-                  )}`}
-                >
-                  {currentUser.role}
-                </span>
-              </div>
-            </button>
           </div>
         </div>
       </div>

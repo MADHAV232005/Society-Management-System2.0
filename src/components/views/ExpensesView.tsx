@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { TrendingDown, Plus, Receipt, DollarSign, Calendar } from 'lucide-react';
-import { Expense } from '../../types';
+import { Expense, UserRole } from '../../types';
 
 interface ExpensesViewProps {
   expenses: Expense[];
   onAddExpense: (data: Omit<Expense, 'id' | 'date'>) => void;
+  userRole?: UserRole;
 }
 
 export const ExpensesView: React.FC<ExpensesViewProps> = ({
   expenses,
   onAddExpense,
+  userRole = 'SUPER_ADMIN',
 }) => {
+  const canLogExpense = userRole === 'SUPER_ADMIN' || userRole === 'COMMITTEE';
   const [showAddModal, setShowAddModal] = useState(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState<number>(5000);
@@ -60,14 +63,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             <span className="text-[10px] text-slate-400 block uppercase font-medium">Total Outflow</span>
             <span className="text-base font-bold text-slate-900">₹{totalExpenditure.toLocaleString()}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-xs font-medium text-white hover:bg-sky-700 shadow-2xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Log Expense</span>
-          </button>
+          {canLogExpense && (
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-sky-600 text-xs font-medium text-white hover:bg-sky-700 shadow-2xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Log Expense</span>
+            </button>
+          )}
         </div>
       </div>
 

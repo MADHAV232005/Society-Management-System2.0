@@ -263,7 +263,7 @@ export function useSocietyStore() {
   const addResident = async (data: any) => {
     // Find or pick a user
     const flatId = data.flat_id || data.flat || (flats[0]?.id || 1);
-    const userId = data.user_id || data.user || currentUser.id;
+    const userId = data.user_id || data.user || currentUser?.id || 1;
     await api.createResident({
       user: userId,
       flat: flatId,
@@ -299,13 +299,14 @@ export function useSocietyStore() {
     else if (method === 'CARD') paymentMethod = 'CARD';
     else if (method === 'CHEQUE') paymentMethod = 'CHEQUE';
 
+    const recordedByName = currentUser ? `${currentUser.first_name} ${currentUser.last_name}`.trim() : 'Admin';
     await api.createPayment({
       bill: bill_id,
       amount,
       payment_date: new Date().toISOString().split('T')[0],
       payment_method: paymentMethod,
       transaction_reference: transaction_id || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-      notes: `Recorded by ${currentUser.first_name} ${currentUser.last_name}`,
+      notes: `Recorded by ${recordedByName}`,
     });
     await loadAllData();
   };
@@ -349,7 +350,8 @@ export function useSocietyStore() {
     if (resolution_notes !== undefined) {
       patchData.resolution_notes = resolution_notes;
     }
-    patchData.remarks = `Status updated to ${status} by ${currentUser.first_name} ${currentUser.last_name}`;
+    const staffName = currentUser ? `${currentUser.first_name} ${currentUser.last_name}`.trim() : 'Staff';
+    patchData.remarks = `Status updated to ${status} by ${staffName}`;
 
     await api.updateComplaint(id, patchData);
     await loadAllData();

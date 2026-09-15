@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSocietyStore } from './store';
 import { Navbar } from './components/Navbar';
-import { Sidebar, TabType } from './components/Sidebar';
+import { Sidebar, TabType, allowedNavIdsByRole } from './components/Sidebar';
 import { DashboardView } from './components/views/DashboardView';
 import { SocietyView } from './components/views/SocietyView';
 import { ResidentsView } from './components/views/ResidentsView';
@@ -15,10 +15,12 @@ import { DocumentsView } from './components/views/DocumentsView';
 import { AuditLogsView } from './components/views/AuditLogsView';
 import { ApiExplorerView } from './components/views/ApiExplorerView';
 import { LoginModal } from './components/LoginModal';
+import { ShieldAlert, X } from 'lucide-react';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [forbiddenToast, setForbiddenToast] = useState<{ message: string; endpoint?: string } | null>(null);
 
   const {
     society,
@@ -38,6 +40,7 @@ export function App() {
     notifications,
     isLoading,
     login,
+    logout,
     addWing,
     addFlat,
     addResident,
@@ -53,9 +56,36 @@ export function App() {
     toggleStaffStatus,
     addExpense,
     addDocument,
-    switchUserRole,
     resetToSampleData,
   } = useSocietyStore();
+
+  const userRole = currentUser?.role || 'SUPER_ADMIN';
+
+  // Automatically ensure currentTab is permitted for the active role
+  useEffect(() => {
+    const allowed = allowedNavIdsByRole[userRole] || allowedNavIdsByRole.SUPER_ADMIN;
+    if (!allowed.includes(currentTab)) {
+      setCurrentTab(allowed[0]);
+    }
+  }, [userRole, currentTab]);
+
+  // Listen for 403 Forbidden events from the API client
+  useEffect(() => {
+    const handleForbidden = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setForbiddenToast({
+        message: customEvent.detail?.message || 'Access Denied: Your role does not have permission to perform this action.',
+        endpoint: customEvent.detail?.endpoint,
+      });
+      const timer = setTimeout(() => {
+        setForbiddenToast(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    };
+
+    window.addEventListener('api-forbidden', handleForbidden);
+    return () => window.removeEventListener('api-forbidden', handleForbidden);
+  }, []);
 
   const openComplaintsCount = complaints.filter(
     (c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS'
@@ -91,7 +121,7 @@ export function App() {
       <Navbar
         societyName={society.name}
         currentUser={currentUser}
-        onSwitchRole={switchUserRole}
+        onLogout={logout}
         notifications={notifications}
         onResetData={resetToSampleData}
         onOpenLogin={() => setShowLoginModal(true)}
@@ -105,6 +135,29 @@ export function App() {
         </div>
       )}
 
+      {/* 403 Forbidden Toast Banner */}
+      {forbiddenToast && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="font-semibold">HTTP 403 Permission Denied:</span>
+            <span>{forbiddenToast.message}</span>
+            {forbiddenToast.endpoint && (
+              <span className="font-mono text-[10px] text-amber-700 bg-amber-100 px-1 py-0.5 rounded">
+                {forbiddenToast.endpoint}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setForbiddenToast(null)}
+            className="text-amber-600 hover:text-amber-800 p-1 rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Main Layout Body */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
         {/* Sidebar */}
@@ -114,6 +167,7 @@ export function App() {
           openComplaintsCount={openComplaintsCount}
           visitorsInsideCount={visitorsInsideCount}
           pendingBillsCount={pendingBillsCount}
+          userRole={userRole}
         />
 
         {/* Content View */}
@@ -129,6 +183,8 @@ export function App() {
               notices={notices}
               onNavigate={setCurrentTab}
               onOpenQuickAction={handleQuickAction}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           )}
 
@@ -139,6 +195,7 @@ export function App() {
               flats={flats}
               onAddWing={addWing}
               onAddFlat={addFlat}
+              userRole={userRole}
             />
           )}
 
@@ -147,6 +204,7 @@ export function App() {
               residents={residents}
               flats={flats}
               onAddResident={addResident}
+              userRole={userRole}
             />
           )}
 
@@ -157,6 +215,8 @@ export function App() {
               flats={flats}
               onCreateBill={createMaintenanceBill}
               onRecordPayment={recordPayment}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           )}
 
@@ -167,6 +227,8 @@ export function App() {
               staff={staff}
               onAddComplaint={addComplaint}
               onUpdateStatus={updateComplaintStatus}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           )}
 
@@ -176,6 +238,8 @@ export function App() {
               flats={flats}
               onCheckIn={checkInVisitor}
               onCheckOut={checkOutVisitor}
+              userRole={userRole}
+              currentUser={currentUser}
             />
           )}
 
@@ -184,6 +248,7 @@ export function App() {
               notices={notices}
               onAddNotice={addNotice}
               onDeleteNotice={deleteNotice}
+              userRole={userRole}
             />
           )}
 
@@ -192,6 +257,7 @@ export function App() {
               staff={staff}
               onAddStaff={addStaff}
               onToggleStatus={toggleStaffStatus}
+              userRole={userRole}
             />
           )}
 
@@ -199,6 +265,7 @@ export function App() {
             <ExpensesView
               expenses={expenses}
               onAddExpense={addExpense}
+              userRole={userRole}
             />
           )}
 
@@ -206,6 +273,7 @@ export function App() {
             <DocumentsView
               documents={documents}
               onAddDocument={addDocument}
+              userRole={userRole}
             />
           )}
 
@@ -239,7 +307,7 @@ export function App() {
         onClose={() => setShowLoginModal(false)}
         onLogin={login}
         onLoginSuccess={() => setShowLoginModal(false)}
-        currentRole={currentUser.role}
+        currentRole={currentUser?.role}
       />
     </div>
   );

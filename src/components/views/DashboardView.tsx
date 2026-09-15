@@ -21,6 +21,8 @@ import {
   Complaint,
   Visitor,
   Notice,
+  UserRole,
+  User,
 } from '../../types';
 
 interface DashboardViewProps {
@@ -33,6 +35,8 @@ interface DashboardViewProps {
   notices: Notice[];
   onNavigate: (tab: TabType) => void;
   onOpenQuickAction: (action: string) => void;
+  userRole?: UserRole;
+  currentUser?: User | null;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -45,16 +49,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   notices,
   onNavigate,
   onOpenQuickAction,
+  userRole = 'SUPER_ADMIN',
+  currentUser,
 }) => {
   const occupiedFlats = flats.filter((f) => f.is_occupied).length;
   const occupancyRate = flats.length > 0 ? Math.round((occupiedFlats / flats.length) * 100) : 0;
 
-  const totalBilled = bills.reduce((acc, b) => acc + Number(b.amount || 0), 0);
-  const totalCollected = bills.reduce((acc, b) => acc + Number(b.total_paid || 0), 0);
-  const totalPending = bills.reduce((acc, b) => acc + Number(b.pending_amount || 0), 0);
+  const isResident = userRole === 'RESIDENT';
+  const isSecurity = userRole === 'SECURITY';
+  const canManageAdmin = userRole === 'SUPER_ADMIN' || userRole === 'COMMITTEE';
 
-  const openComplaints = complaints.filter((c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS');
-  const visitorsInside = visitors.filter((v) => v.status === 'INSIDE' || v.status === 'CHECKED_IN');
+  // Role-filtered stats
+  const residentFlatNumber = currentUser?.resident_profile?.flat_number;
+  const residentBills = isResident && residentFlatNumber
+    ? bills.filter((b) => b.flat_number === residentFlatNumber)
+    : bills;
+  const residentComplaints = isResident && residentFlatNumber
+    ? complaints.filter((c) => c.flat_number === residentFlatNumber)
+    : complaints;
+  const residentVisitors = isResident && residentFlatNumber
+    ? visitors.filter((v) => v.flat_number === residentFlatNumber)
+    : visitors;
+
+  const totalBilled = (isResident ? residentBills : bills).reduce((acc, b) => acc + Number(b.amount || 0), 0);
+  const totalCollected = (isResident ? residentBills : bills).reduce((acc, b) => acc + Number(b.total_paid || 0), 0);
+  const totalPending = (isResident ? residentBills : bills).reduce((acc, b) => acc + Number(b.pending_amount || 0), 0);
+
+  const openComplaints = (isResident ? residentComplaints : complaints).filter(
+    (c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS'
+  );
+  const visitorsInside = (isResident ? residentVisitors : visitors).filter(
+    (v) => v.status === 'INSIDE' || v.status === 'CHECKED_IN'
+  );
   const pinnedNotice = notices.find((n) => n.is_pinned || n.priority === 'HIGH');
 
   return (
@@ -209,38 +235,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <UserCheck className="w-4 h-4" />
             </div>
             <div>
-              <span className="block text-xs font-semibold text-slate-900">Gate Check-in</span>
-              <span className="block text-[11px] text-slate-500">Log guest / cab</span>
+              <span className="block text-xs font-semibold text-slate-900">
+                {isResident ? 'Pre-register Guest' : 'Gate Check-in'}
+              </span>
+              <span className="block text-[11px] text-slate-500">
+                {isResident ? 'Notify security gate' : 'Log guest / cab'}
+              </span>
             </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onOpenQuickAction('complaint')}
-            className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 transition-colors text-left"
-          >
-            <div className="p-2 rounded-md bg-rose-100 text-rose-700">
-              <MessageSquareWarning className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="block text-xs font-semibold text-slate-900">Lodge Complaint</span>
-              <span className="block text-[11px] text-slate-500">Plumbing, lift, etc</span>
-            </div>
-          </button>
+          {!isSecurity && (
+            <button
+              type="button"
+              onClick={() => onOpenQuickAction('complaint')}
+              className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 transition-colors text-left"
+            >
+              <div className="p-2 rounded-md bg-rose-100 text-rose-700">
+                <MessageSquareWarning className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="block text-xs font-semibold text-slate-900">Lodge Complaint</span>
+                <span className="block text-[11px] text-slate-500">Plumbing, lift, etc</span>
+              </div>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => onOpenQuickAction('bill')}
-            className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors text-left"
-          >
-            <div className="p-2 rounded-md bg-emerald-100 text-emerald-700">
-              <CreditCard className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="block text-xs font-semibold text-slate-900">Generate Bill</span>
-              <span className="block text-[11px] text-slate-500">Create dues invoice</span>
-            </div>
-          </button>
+          {!isSecurity && (
+            <button
+              type="button"
+              onClick={() => onOpenQuickAction('bill')}
+              className="flex items-center space-x-2.5 p-3 rounded-lg border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors text-left"
+            >
+              <div className="p-2 rounded-md bg-emerald-100 text-emerald-700">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="block text-xs font-semibold text-slate-900">
+                  {isResident ? 'Pay Maintenance' : 'Generate Bill'}
+                </span>
+                <span className="block text-[11px] text-slate-500">
+                  {isResident ? 'Settle pending dues' : 'Create dues invoice'}
+                </span>
+              </div>
+            </button>
+          )}
 
           <button
             type="button"
@@ -251,8 +289,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Megaphone className="w-4 h-4" />
             </div>
             <div>
-              <span className="block text-xs font-semibold text-slate-900">Post Circular</span>
-              <span className="block text-[11px] text-slate-500">Broadcast notice</span>
+              <span className="block text-xs font-semibold text-slate-900">
+                {canManageAdmin ? 'Post Circular' : 'View Circulars'}
+              </span>
+              <span className="block text-[11px] text-slate-500">
+                {canManageAdmin ? 'Broadcast notice' : 'Official society notices'}
+              </span>
             </div>
           </button>
         </div>
