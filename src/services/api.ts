@@ -18,7 +18,19 @@ import {
   AuditLog,
 } from '../types';
 
-const API_BASE = '/api';
+function getApiBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '') as string;
+  if (!envUrl || envUrl.trim() === '') {
+    return '/api';
+  }
+  const cleaned = envUrl.trim().replace(/\/+$/, '');
+  if (cleaned === '' || cleaned === '/api') {
+    return '/api';
+  }
+  return cleaned.endsWith('/api') ? cleaned : `${cleaned}/api`;
+}
+
+export const API_BASE = getApiBaseUrl();
 
 export const TOKEN_KEYS = {
   ACCESS: 'sms_access_token',
